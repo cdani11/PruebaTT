@@ -1,0 +1,28 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# PHP
+vendor/
+composer.lock
+.phpunit.result.cache
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+*.log
+
+# Entornos
+.env
+.env.local
+appsettings.Development.json
+
+# Editor
+.idea/
+.vscode/
+*.swp
+.DS_Store

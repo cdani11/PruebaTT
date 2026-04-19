@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: pruebatt-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "TuClaveFuerte123!"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+
+  servicio-autenticacion:
+    build:
+      context: ./backend/ServicioAutenticacion
+    container_name: pruebatt-autenticacion
+    ports:
+      - "5001:8080"
+    depends_on:
+      - sqlserver
+
+  servicio-clientes-pedidos:
+    build:
+      context: ./backend/ServicioClientesPedidos
+    container_name: pruebatt-clientes-pedidos
+    ports:
+      - "8080:80"
+    depends_on:
+      - sqlserver
+
+volumes:
+  sqldata:
