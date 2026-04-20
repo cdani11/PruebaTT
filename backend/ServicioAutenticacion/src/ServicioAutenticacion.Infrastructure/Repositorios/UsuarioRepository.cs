@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using ServicioAutenticacion.Domain.Entidades;
 using ServicioAutenticacion.Domain.Repositorios;
@@ -11,18 +12,53 @@ public class UsuarioRepository : IUsuarioRepository
 
     public UsuarioRepository(AutenticacionDbContext contexto) => _contexto = contexto;
 
-    public Task<Usuario?> ObtenerPorCorreoAsync(string correoElectronico, CancellationToken ct = default) =>
-        _contexto.Usuarios.FirstOrDefaultAsync(u => u.CorreoElectronico == correoElectronico.ToLower(), ct);
+    public async Task<Usuario?> ObtenerPorCorreoAsync(string correoElectronico, CancellationToken ct = default)
+    {
+        var param = new SqlParameter("@CorreoElectronico", correoElectronico.ToLowerInvariant());
+        var lista = await _contexto.Usuarios
+            .FromSqlRaw("EXEC sp_ObtenerUsuarioPorCorreo @CorreoElectronico", param)
+            .AsNoTracking()
+            .ToListAsync(ct);
+        return lista.FirstOrDefault();
+    }
 
-    public Task<Usuario?> ObtenerPorIdAsync(Guid id, CancellationToken ct = default) =>
-        _contexto.Usuarios.FirstOrDefaultAsync(u => u.Id == id, ct);
+    public async Task<Usuario?> ObtenerPorIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var param = new SqlParameter("@Id", id);
+        var lista = await _contexto.Usuarios
+            .FromSqlRaw("EXEC sp_ObtenerUsuarioPorId @Id", param)
+            .AsNoTracking()
+            .ToListAsync(ct);
+        return lista.FirstOrDefault();
+    }
 
-    public Task<bool> ExisteCorreoAsync(string correoElectronico, CancellationToken ct = default) =>
-        _contexto.Usuarios.AnyAsync(u => u.CorreoElectronico == correoElectronico.ToLower(), ct);
+    public async Task<bool> ExisteCorreoAsync(string correoElectronico, CancellationToken ct = default)
+    {
+        var param = new SqlParameter("@CorreoElectronico", correoElectronico.ToLowerInvariant());
+        var resultado = await _contexto.Set<ExistenciaDto>()
+            .FromSqlRaw("EXEC sp_ExisteCorreo @CorreoElectronico", param)
+            .ToListAsync(ct);
+        return resultado.FirstOrDefault()?.Existe ?? false;
+    }
 
-    public async Task AgregarAsync(Usuario usuario, CancellationToken ct = default) =>
-        await _contexto.Usuarios.AddAsync(usuario, ct);
+    public async Task AgregarAsync(Usuario usuario, CancellationToken ct = default)
+    {
+        var parametros = new[]
+        {
+            new SqlParameter("@Id",                usuario.Id),
+            new SqlParameter("@NombreUsuario",     usuario.NombreUsuario),
+            new SqlParameter("@CorreoElectronico", usuario.CorreoElectronico),
+            new SqlParameter("@ClaveHash",         usuario.ClaveHash),
+            new SqlParameter("@FechaCreacion",     usuario.FechaCreacion),
+            new SqlParameter("@Activo",            usuario.Activo),
+        };
 
-    public Task GuardarCambiosAsync(CancellationToken ct = default) =>
-        _contexto.SaveChangesAsync(ct);
+        await _contexto.Database.ExecuteSqlRawAsync(
+            "EXEC sp_AgregarUsuario @Id, @NombreUsuario, @CorreoElectronico, @ClaveHash, @FechaCreacion, @Activo",
+            parametros,
+            ct);
+    }
+
+    // El INSERT se ejecuta directamente en AgregarAsync; este método preserva la interfaz.
+    public Task GuardarCambiosAsync(CancellationToken ct = default) => Task.CompletedTask;
 }

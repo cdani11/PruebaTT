@@ -43,4 +43,40 @@ public class AutenticacionAppServiceTests
 
         await accion.Should().ThrowAsync<DominioExcepcion>();
     }
+
+    [Fact]
+    public async Task IniciarSesion_LanzaExcepcion_CuandoUsuarioNoExiste()
+    {
+        _repo.Setup(r => r.ObtenerPorCorreoAsync(It.IsAny<string>(), default))
+             .ReturnsAsync((Usuario?)null);
+
+        var accion = () => _sut.IniciarSesionAsync(new InicioSesionDto("noexiste@a.com", "123"));
+
+        await accion.Should().ThrowAsync<DominioExcepcion>();
+    }
+
+    [Fact]
+    public async Task Registrar_RetornaToken_CuandoDatosValidos()
+    {
+        _repo.Setup(r => r.ExisteCorreoAsync(It.IsAny<string>(), default)).ReturnsAsync(false);
+        _hash.Setup(h => h.Hashear(It.IsAny<string>())).Returns("hashed");
+        _token.Setup(t => t.Generar(It.IsAny<Usuario>())).Returns("jwt-token");
+
+        var resultado = await _sut.RegistrarAsync(new RegistroUsuarioDto("user", "b@b.com", "pass123"));
+
+        resultado.Token.Should().Be("jwt-token");
+    }
+
+    [Fact]
+    public async Task IniciarSesion_RetornaToken_CuandoCredencialesCorrectas()
+    {
+        var usuario = new Usuario("u", "a@a.com", "hash");
+        _repo.Setup(r => r.ObtenerPorCorreoAsync("a@a.com", default)).ReturnsAsync(usuario);
+        _hash.Setup(h => h.Verificar("buena", "hash")).Returns(true);
+        _token.Setup(t => t.Generar(usuario)).Returns("jwt-token");
+
+        var resultado = await _sut.IniciarSesionAsync(new InicioSesionDto("a@a.com", "buena"));
+
+        resultado.Token.Should().Be("jwt-token");
+    }
 }

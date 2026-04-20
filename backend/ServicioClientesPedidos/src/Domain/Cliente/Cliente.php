@@ -36,6 +36,20 @@ final class Cliente
         );
     }
 
+    public function actualizarDatos(string $nombres, string $apellidos, string $correoElectronico, ?string $telefono): void
+    {
+        if (trim($nombres) === '') {
+            throw new DominioExcepcion('Los nombres son obligatorios.');
+        }
+        if (!filter_var($correoElectronico, FILTER_VALIDATE_EMAIL)) {
+            throw new DominioExcepcion('Correo electrónico inválido.');
+        }
+        $this->nombres = $nombres;
+        $this->apellidos = $apellidos;
+        $this->correoElectronico = strtolower(trim($correoElectronico));
+        $this->telefono = $telefono;
+    }
+
     public function desactivar(): void { $this->activo = false; }
 
     public function id(): string { return $this->id; }

@@ -1,0 +1,9 @@
+# Excluir artefactos de build locales (contienen rutas Windows incompatibles con Linux)
+**/bin/
+**/obj/
+
+# Archivos innecesarios en la imagen
+**/.vs/
+**/.git/
+**/*.user
+**/*.suo

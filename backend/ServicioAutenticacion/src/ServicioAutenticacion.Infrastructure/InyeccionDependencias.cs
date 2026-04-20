@@ -17,7 +17,13 @@ public static class InyeccionDependencias
         servicios.AddDbContext<AutenticacionDbContext>(opt =>
             opt.UseSqlServer(configuracion.GetConnectionString("AutenticacionDb")));
 
-        servicios.Configure<ConfiguracionJwt>(configuracion.GetSection("Jwt"));
+        servicios.Configure<ConfiguracionJwt>(opt =>
+        {
+            opt.Clave = configuracion.GetSection("Jwt")["Clave"];
+            opt.Emisor = configuracion.GetSection("Jwt")["Emisor"];
+            opt.Audiencia = configuracion.GetSection("Jwt")["Audiencia"];
+            opt.MinutosExpiracion = int.Parse(configuracion.GetSection("Jwt")["MinutosExpiracion"] ?? "60");
+        });
 
         servicios.AddScoped<IUsuarioRepository, UsuarioRepository>();
         servicios.AddScoped<IHasheadorClaves, HasheadorClavesBcrypt>();

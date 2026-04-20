@@ -23,6 +23,18 @@ final class ClienteController
         Respuesta::exito($this->serializar($cliente));
     }
 
+    public function actualizar(array $args, array $cuerpo, array $_query): void
+    {
+        $cliente = $this->servicio->actualizarCliente($args['id'], $cuerpo);
+        Respuesta::exito($this->serializar($cliente));
+    }
+
+    public function eliminar(array $args, array $_cuerpo, array $_query): void
+    {
+        $this->servicio->eliminarCliente($args['id']);
+        Respuesta::exito(null, 204);
+    }
+
     public function listar(array $_args, array $_cuerpo, array $query): void
     {
         $pagina = (int)($query['pagina'] ?? 1);

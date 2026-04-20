@@ -14,9 +14,9 @@ final class ClienteRepository implements IClienteRepository
     public function obtenerPorId(string $id): ?Cliente
     {
         $stmt = $this->conexion->obtener()->prepare(
-            'SELECT * FROM Clientes WHERE Id = :id'
+            'EXEC sp_ObtenerClientePorId :Id'
         );
-        $stmt->execute(['id' => $id]);
+        $stmt->execute([':Id' => $id]);
         $fila = $stmt->fetch();
         return $fila ? $this->mapear($fila) : null;
     }
@@ -24,21 +24,20 @@ final class ClienteRepository implements IClienteRepository
     public function obtenerPorCorreo(string $correo): ?Cliente
     {
         $stmt = $this->conexion->obtener()->prepare(
-            'SELECT * FROM Clientes WHERE CorreoElectronico = :c'
+            'EXEC sp_ObtenerClientePorCorreo :CorreoElectronico'
         );
-        $stmt->execute(['c' => strtolower($correo)]);
+        $stmt->execute([':CorreoElectronico' => strtolower($correo)]);
         $fila = $stmt->fetch();
         return $fila ? $this->mapear($fila) : null;
     }
 
     public function listar(int $pagina, int $tamanio): array
     {
-        $offset = ($pagina - 1) * $tamanio;
         $stmt = $this->conexion->obtener()->prepare(
-            'SELECT * FROM Clientes ORDER BY FechaRegistro DESC OFFSET :off ROWS FETCH NEXT :tam ROWS ONLY'
+            'EXEC sp_ListarClientes :Pagina, :Tamanio'
         );
-        $stmt->bindValue('off', $offset, \PDO::PARAM_INT);
-        $stmt->bindValue('tam', $tamanio, \PDO::PARAM_INT);
+        $stmt->bindValue(':Pagina',  $pagina,   \PDO::PARAM_INT);
+        $stmt->bindValue(':Tamanio', $tamanio,  \PDO::PARAM_INT);
         $stmt->execute();
         return array_map(fn($f) => $this->mapear($f), $stmt->fetchAll());
     }
@@ -46,27 +45,44 @@ final class ClienteRepository implements IClienteRepository
     public function existeCorreo(string $correo): bool
     {
         $stmt = $this->conexion->obtener()->prepare(
-            'SELECT 1 FROM Clientes WHERE CorreoElectronico = :c'
+            'EXEC sp_ExisteCorreoCliente :CorreoElectronico'
         );
-        $stmt->execute(['c' => strtolower($correo)]);
-        return (bool)$stmt->fetchColumn();
+        $stmt->execute([':CorreoElectronico' => strtolower($correo)]);
+        return (bool) $stmt->fetchColumn();
     }
 
     public function agregar(Cliente $cliente): void
     {
         $stmt = $this->conexion->obtener()->prepare(
-            'INSERT INTO Clientes (Id, Nombres, Apellidos, CorreoElectronico, Telefono, FechaRegistro, Activo)
-             VALUES (:id, :n, :a, :c, :t, :f, :ac)'
+            'EXEC sp_AgregarCliente :Id, :Nombres, :Apellidos, :CorreoElectronico, :Telefono, :FechaRegistro, :Activo'
         );
-        $stmt->execute([
-            'id' => $cliente->id(),
-            'n' => $cliente->nombres(),
-            'a' => $cliente->apellidos(),
-            'c' => $cliente->correoElectronico(),
-            't' => $cliente->telefono(),
-            'f' => $cliente->fechaRegistro()->format('Y-m-d H:i:s'),
-            'ac' => $cliente->activo() ? 1 : 0,
-        ]);
+        $stmt->bindValue(':Id',                $cliente->id());
+        $stmt->bindValue(':Nombres',           $cliente->nombres());
+        $stmt->bindValue(':Apellidos',         $cliente->apellidos());
+        $stmt->bindValue(':CorreoElectronico', $cliente->correoElectronico());
+        $stmt->bindValue(':Telefono',          $cliente->telefono());
+        $stmt->bindValue(':FechaRegistro',     $cliente->fechaRegistro()->format('Y-m-d H:i:s'));
+        $stmt->bindValue(':Activo',            $cliente->activo() ? 1 : 0, \PDO::PARAM_INT);
+        $stmt->execute();
+    }
+
+    public function actualizar(Cliente $cliente): void
+    {
+        $stmt = $this->conexion->obtener()->prepare(
+            'EXEC sp_ActualizarCliente :Id, :Nombres, :Apellidos, :CorreoElectronico, :Telefono'
+        );
+        $stmt->bindValue(':Id',                $cliente->id());
+        $stmt->bindValue(':Nombres',           $cliente->nombres());
+        $stmt->bindValue(':Apellidos',         $cliente->apellidos());
+        $stmt->bindValue(':CorreoElectronico', $cliente->correoElectronico());
+        $stmt->bindValue(':Telefono',          $cliente->telefono());
+        $stmt->execute();
+    }
+
+    public function eliminar(string $id): void
+    {
+        $stmt = $this->conexion->obtener()->prepare('EXEC sp_EliminarCliente :Id');
+        $stmt->execute([':Id' => $id]);
     }
 
     private function mapear(array $f): Cliente
@@ -78,7 +94,7 @@ final class ClienteRepository implements IClienteRepository
             correoElectronico: $f['CorreoElectronico'],
             telefono: $f['Telefono'],
             fechaRegistro: new \DateTimeImmutable($f['FechaRegistro']),
-            activo: (bool)$f['Activo']
+            activo: (bool) $f['Activo']
         );
     }
 }

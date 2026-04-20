@@ -42,9 +42,35 @@ final class PedidoAppService
         return $pedido;
     }
 
-    /** @return Pedido[] */
-    public function listarPedidos(int $pagina = 1, int $tamanio = 20): array
+    public function completarPedido(string $id): Pedido
     {
-        return $this->pedidos->listar($pagina, $tamanio);
+        $pedido = $this->pedidos->obtenerPorId($id)
+            ?? throw new DominioExcepcion('Pedido no encontrado.');
+        $pedido->completar();
+        $this->pedidos->actualizar($pedido);
+        return $pedido;
+    }
+
+    public function editarDetallesPedido(string $id, array $detalles): Pedido
+    {
+        $pedido = $this->pedidos->obtenerPorId($id)
+            ?? throw new DominioExcepcion('Pedido no encontrado.');
+        $pedido->reemplazarDetalles($detalles);
+        $this->pedidos->reemplazarDetalles($pedido);
+        return $pedido;
+    }
+
+    public function eliminarPedido(string $id): void
+    {
+        if ($this->pedidos->obtenerPorId($id) === null) {
+            throw new DominioExcepcion('Pedido no encontrado.');
+        }
+        $this->pedidos->eliminar($id);
+    }
+
+    /** @return Pedido[] */
+    public function listarPedidos(int $pagina = 1, int $tamanio = 20, array $filtros = []): array
+    {
+        return $this->pedidos->listar($pagina, $tamanio, $filtros);
     }
 }

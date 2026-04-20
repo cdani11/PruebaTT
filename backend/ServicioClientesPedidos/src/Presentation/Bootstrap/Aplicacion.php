@@ -37,12 +37,33 @@ final class Aplicacion
             $pedidoCtrl = new PedidoController(new PedidoAppService($pedidoRepo, $clienteRepo));
 
             $enrutador = new Enrutador();
-            $enrutador->registrar('POST', '/api/v1/clientes', [$clienteCtrl, 'crear']);
-            $enrutador->registrar('GET',  '/api/v1/clientes', [$clienteCtrl, 'listar']);
-            $enrutador->registrar('GET',  '/api/v1/clientes/{id}', [$clienteCtrl, 'obtener']);
-            $enrutador->registrar('POST', '/api/v1/pedidos', [$pedidoCtrl, 'crear']);
-            $enrutador->registrar('GET',  '/api/v1/pedidos', [$pedidoCtrl, 'listar']);
-            $enrutador->registrar('DELETE', '/api/v1/pedidos/{id}', [$pedidoCtrl, 'cancelar']);
+            $enrutador->registrar('GET',  '/swagger.json', function () {
+                header('Content-Type: application/json');
+                readfile(__DIR__ . '/../../../public/swagger.json');
+            });
+            $enrutador->registrar('GET',  '/docs', function () {
+                readfile(__DIR__ . '/../../../public/swagger-ui.html');
+            });
+            $enrutador->registrar('POST',   '/api/v1/clientes',          [$clienteCtrl, 'crear']);
+            $enrutador->registrar('GET',    '/api/v1/clientes',          [$clienteCtrl, 'listar']);
+            $enrutador->registrar('GET',    '/api/v1/clientes/{id}',     [$clienteCtrl, 'obtener']);
+            $enrutador->registrar('PUT',    '/api/v1/clientes/{id}',     [$clienteCtrl, 'actualizar']);
+            $enrutador->registrar('DELETE', '/api/v1/clientes/{id}',     [$clienteCtrl, 'eliminar']);
+            $enrutador->registrar('POST',   '/api/v1/pedidos',           [$pedidoCtrl, 'crear']);
+            $enrutador->registrar('GET',    '/api/v1/pedidos',           [$pedidoCtrl, 'listar']);
+            $enrutador->registrar('PUT',    '/api/v1/pedidos/{id}/detalles',  [$pedidoCtrl, 'editarDetalles']);
+            $enrutador->registrar('PATCH',  '/api/v1/pedidos/{id}/cancelar',  [$pedidoCtrl, 'cancelar']);
+            $enrutador->registrar('PATCH',  '/api/v1/pedidos/{id}/completar', [$pedidoCtrl, 'completar']);
+            $enrutador->registrar('DELETE', '/api/v1/pedidos/{id}',      [$pedidoCtrl, 'eliminar']);
+
+            header('Access-Control-Allow-Origin: *');
+            header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+            if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+                http_response_code(204);
+                exit;
+            }
 
             $enrutador->despachar($_SERVER['REQUEST_METHOD'], parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
         } catch (\Throwable $e) {

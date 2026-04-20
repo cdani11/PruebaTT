@@ -12,4 +12,6 @@ interface IPedidoRepository
     public function listar(int $pagina, int $tamanio): array;
     public function agregar(Pedido $pedido): void;
     public function actualizar(Pedido $pedido): void;
+    public function reemplazarDetalles(Pedido $pedido): void;
+    public function eliminar(string $id): void;
 }

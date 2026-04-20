@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace PruebaTT\ClientesPedidos\Infrastructure\Repositorios;
 
-use PruebaTT\ClientesPedidos\Domain\Pedido\DetallePedido;
 use PruebaTT\ClientesPedidos\Domain\Pedido\EstadoPedido;
 use PruebaTT\ClientesPedidos\Domain\Pedido\IPedidoRepository;
 use PruebaTT\ClientesPedidos\Domain\Pedido\Pedido;
@@ -15,9 +14,9 @@ final class PedidoRepository implements IPedidoRepository
 
     public function obtenerPorId(string $id): ?Pedido
     {
-        $pdo = $this->conexion->obtener();
-        $stmt = $pdo->prepare('SELECT * FROM Pedidos WHERE Id = :id');
-        $stmt->execute(['id' => $id]);
+        $pdo  = $this->conexion->obtener();
+        $stmt = $pdo->prepare('EXEC sp_ObtenerPedidoPorId :Id');
+        $stmt->execute([':Id' => $id]);
         $fila = $stmt->fetch();
         if (!$fila) return null;
         return $this->mapearConDetalles($pdo, $fila);
@@ -25,23 +24,52 @@ final class PedidoRepository implements IPedidoRepository
 
     public function listarPorCliente(string $clienteId): array
     {
-        $pdo = $this->conexion->obtener();
-        $stmt = $pdo->prepare('SELECT * FROM Pedidos WHERE ClienteId = :c ORDER BY FechaCreacion DESC');
-        $stmt->execute(['c' => $clienteId]);
+        $pdo  = $this->conexion->obtener();
+        $stmt = $pdo->prepare('EXEC sp_ListarPedidosPorCliente :ClienteId');
+        $stmt->execute([':ClienteId' => $clienteId]);
         return array_map(fn($f) => $this->mapearConDetalles($pdo, $f), $stmt->fetchAll());
     }
 
-    public function listar(int $pagina, int $tamanio): array
+    public function listar(int $pagina, int $tamanio, array $filtros = []): array
     {
-        $pdo = $this->conexion->obtener();
-        $offset = ($pagina - 1) * $tamanio;
+        $pdo  = $this->conexion->obtener();
         $stmt = $pdo->prepare(
-            'SELECT * FROM Pedidos ORDER BY FechaCreacion DESC OFFSET :off ROWS FETCH NEXT :tam ROWS ONLY'
+            'EXEC sp_ListarPedidos :Pagina, :Tamanio, :Estado, :FechaDesde, :FechaHasta, :ClienteId'
         );
-        $stmt->bindValue('off', $offset, \PDO::PARAM_INT);
-        $stmt->bindValue('tam', $tamanio, \PDO::PARAM_INT);
+        $stmt->bindValue(':Pagina',     $pagina,                       \PDO::PARAM_INT);
+        $stmt->bindValue(':Tamanio',    $tamanio,                      \PDO::PARAM_INT);
+        $stmt->bindValue(':Estado',     $filtros['estado']     ?? null);
+        $stmt->bindValue(':FechaDesde', $filtros['fechaDesde'] ?? null);
+        $stmt->bindValue(':FechaHasta', $filtros['fechaHasta'] ?? null);
+        $stmt->bindValue(':ClienteId',  $filtros['clienteId']  ?? null);
         $stmt->execute();
         return array_map(fn($f) => $this->mapearConDetalles($pdo, $f), $stmt->fetchAll());
+    }
+
+    public function reemplazarDetalles(Pedido $pedido): void
+    {
+        $pdo = $this->conexion->obtener();
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare('EXEC sp_EliminarDetallesPedido :PedidoId');
+            $stmt->execute([':PedidoId' => $pedido->id()]);
+            $this->insertarDetalles($pdo, $pedido);
+            $stmt2 = $pdo->prepare('EXEC sp_ActualizarPedido :Id, :Estado, :Total');
+            $stmt2->bindValue(':Id',     $pedido->id());
+            $stmt2->bindValue(':Estado', $pedido->estado()->value);
+            $stmt2->bindValue(':Total',  $pedido->total());
+            $stmt2->execute();
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    public function eliminar(string $id): void
+    {
+        $stmt = $this->conexion->obtener()->prepare('EXEC sp_EliminarPedido :Id');
+        $stmt->execute([':Id' => $id]);
     }
 
     public function agregar(Pedido $pedido): void
@@ -50,17 +78,17 @@ final class PedidoRepository implements IPedidoRepository
         $pdo->beginTransaction();
         try {
             $stmt = $pdo->prepare(
-                'INSERT INTO Pedidos (Id, ClienteId, FechaCreacion, Estado, Total)
-                 VALUES (:id, :c, :f, :e, :t)'
+                'EXEC sp_AgregarPedido :Id, :ClienteId, :FechaCreacion, :Estado, :Total'
             );
-            $stmt->execute([
-                'id' => $pedido->id(),
-                'c' => $pedido->clienteId(),
-                'f' => $pedido->fechaCreacion()->format('Y-m-d H:i:s'),
-                'e' => $pedido->estado()->value,
-                't' => $pedido->total(),
-            ]);
+            $stmt->bindValue(':Id',            $pedido->id());
+            $stmt->bindValue(':ClienteId',     $pedido->clienteId());
+            $stmt->bindValue(':FechaCreacion', $pedido->fechaCreacion()->format('Y-m-d H:i:s'));
+            $stmt->bindValue(':Estado',        $pedido->estado()->value);
+            $stmt->bindValue(':Total',         $pedido->total());
+            $stmt->execute();
+
             $this->insertarDetalles($pdo, $pedido);
+
             $pdo->commit();
         } catch (\Throwable $e) {
             $pdo->rollBack();
@@ -71,28 +99,25 @@ final class PedidoRepository implements IPedidoRepository
     public function actualizar(Pedido $pedido): void
     {
         $stmt = $this->conexion->obtener()->prepare(
-            'UPDATE Pedidos SET Estado = :e, Total = :t WHERE Id = :id'
+            'EXEC sp_ActualizarPedido :Id, :Estado, :Total'
         );
-        $stmt->execute([
-            'e' => $pedido->estado()->value,
-            't' => $pedido->total(),
-            'id' => $pedido->id(),
-        ]);
+        $stmt->bindValue(':Id',     $pedido->id());
+        $stmt->bindValue(':Estado', $pedido->estado()->value);
+        $stmt->bindValue(':Total',  $pedido->total());
+        $stmt->execute();
     }
 
     private function insertarDetalles(\PDO $pdo, Pedido $pedido): void
     {
         $stmt = $pdo->prepare(
-            'INSERT INTO PedidoDetalles (PedidoId, Producto, Cantidad, PrecioUnitario)
-             VALUES (:pid, :p, :c, :pr)'
+            'EXEC sp_AgregarDetallePedido :PedidoId, :Producto, :Cantidad, :PrecioUnitario'
         );
         foreach ($pedido->detalles() as $d) {
-            $stmt->execute([
-                'pid' => $pedido->id(),
-                'p' => $d->producto(),
-                'c' => $d->cantidad(),
-                'pr' => $d->precioUnitario(),
-            ]);
+            $stmt->bindValue(':PedidoId',       $pedido->id());
+            $stmt->bindValue(':Producto',       $d->producto());
+            $stmt->bindValue(':Cantidad',       $d->cantidad(),        \PDO::PARAM_INT);
+            $stmt->bindValue(':PrecioUnitario', $d->precioUnitario());
+            $stmt->execute();
         }
     }
 
@@ -105,10 +130,10 @@ final class PedidoRepository implements IPedidoRepository
             estado: EstadoPedido::from($fila['Estado'])
         );
 
-        $stmt = $pdo->prepare('SELECT * FROM PedidoDetalles WHERE PedidoId = :id');
-        $stmt->execute(['id' => $fila['Id']]);
+        $stmt = $pdo->prepare('EXEC sp_ObtenerDetallesPedido :PedidoId');
+        $stmt->execute([':PedidoId' => $fila['Id']]);
         foreach ($stmt->fetchAll() as $d) {
-            $pedido->agregarDetalle($d['Producto'], (int)$d['Cantidad'], (float)$d['PrecioUnitario']);
+            $pedido->cargarDetalle($d['Producto'], (int) $d['Cantidad'], (float) $d['PrecioUnitario']);
         }
         return $pedido;
     }

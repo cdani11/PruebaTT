@@ -38,12 +38,44 @@ final class Pedido
         $this->detalles[] = new DetallePedido($producto, $cantidad, $precioUnitario);
     }
 
+    /** Carga un detalle desde persistencia sin validar el estado (solo para reconstitución). */
+    public function cargarDetalle(string $producto, int $cantidad, float $precioUnitario): void
+    {
+        $this->detalles[] = new DetallePedido($producto, $cantidad, $precioUnitario);
+    }
+
+    public function reemplazarDetalles(array $nuevosDetalles): void
+    {
+        if ($this->estado === EstadoPedido::Cancelado || $this->estado === EstadoPedido::Entregado) {
+            throw new DominioExcepcion('No se pueden editar detalles de un pedido cancelado o entregado.');
+        }
+        if (empty($nuevosDetalles)) {
+            throw new DominioExcepcion('Un pedido debe tener al menos un detalle.');
+        }
+        $this->detalles = [];
+        foreach ($nuevosDetalles as $d) {
+            $this->detalles[] = new DetallePedido(
+                $d['producto'] ?? '',
+                (int)($d['cantidad'] ?? 0),
+                (float)($d['precioUnitario'] ?? 0)
+            );
+        }
+    }
+
     public function confirmar(): void
     {
         if (count($this->detalles) === 0) {
             throw new DominioExcepcion('Un pedido debe tener al menos un detalle.');
         }
         $this->estado = EstadoPedido::Confirmado;
+    }
+
+    public function completar(): void
+    {
+        if ($this->estado !== EstadoPedido::Confirmado) {
+            throw new DominioExcepcion('Solo se pueden completar pedidos confirmados.');
+        }
+        $this->estado = EstadoPedido::Entregado;
     }
 
     public function cancelar(): void

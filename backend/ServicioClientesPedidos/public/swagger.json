@@ -1,0 +1,210 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "PruebaTT - Microservicio de Clientes y Pedidos",
+    "version": "1.0.0",
+    "description": "API REST para gestionar clientes y pedidos"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Desarrollo"
+    }
+  ],
+  "paths": {
+    "/api/v1/clientes": {
+      "get": {
+        "tags": ["Clientes"],
+        "summary": "Listar clientes con paginación",
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "tamanio",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de clientes"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Clientes"],
+        "summary": "Crear un nuevo cliente",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nombres": {
+                    "type": "string",
+                    "example": "Juan"
+                  },
+                  "apellidos": {
+                    "type": "string",
+                    "example": "Pérez"
+                  },
+                  "correoElectronico": {
+                    "type": "string",
+                    "example": "juan@example.com"
+                  },
+                  "telefono": {
+                    "type": "string",
+                    "example": "9999-9999"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Cliente creado exitosamente"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{id}": {
+      "get": {
+        "tags": ["Clientes"],
+        "summary": "Obtener un cliente por ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cliente encontrado"
+          },
+          "404": {
+            "description": "Cliente no encontrado"
+          }
+        }
+      }
+    },
+    "/api/v1/pedidos": {
+      "get": {
+        "tags": ["Pedidos"],
+        "summary": "Listar pedidos con paginación",
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "tamanio",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de pedidos"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Pedidos"],
+        "summary": "Crear un nuevo pedido",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "clienteId": {
+                    "type": "string",
+                    "example": "uuid-aqui"
+                  },
+                  "detalles": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "producto": {
+                          "type": "string",
+                          "example": "Laptop"
+                        },
+                        "cantidad": {
+                          "type": "integer",
+                          "example": 2
+                        },
+                        "precioUnitario": {
+                          "type": "number",
+                          "example": 899.99
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pedido creado exitosamente"
+          },
+          "400": {
+            "description": "Datos inválidos"
+          }
+        }
+      }
+    },
+    "/api/v1/pedidos/{id}/cancelar": {
+      "patch": {
+        "tags": ["Pedidos"],
+        "summary": "Cancelar un pedido",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pedido cancelado"
+          },
+          "404": {
+            "description": "Pedido no encontrado"
+          }
+        }
+      }
+    }
+  }
+}

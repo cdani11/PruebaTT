@@ -26,11 +26,35 @@ final class PedidoController
         Respuesta::exito($this->serializar($pedido));
     }
 
+    public function completar(array $args, array $_cuerpo, array $_query): void
+    {
+        $pedido = $this->servicio->completarPedido($args['id']);
+        Respuesta::exito($this->serializar($pedido));
+    }
+
+    public function editarDetalles(array $args, array $cuerpo, array $_query): void
+    {
+        $pedido = $this->servicio->editarDetallesPedido($args['id'], $cuerpo['detalles'] ?? []);
+        Respuesta::exito($this->serializar($pedido));
+    }
+
+    public function eliminar(array $args, array $_cuerpo, array $_query): void
+    {
+        $this->servicio->eliminarPedido($args['id']);
+        Respuesta::exito(null, 204);
+    }
+
     public function listar(array $_args, array $_cuerpo, array $query): void
     {
+        $filtros = array_filter([
+            'estado'     => $query['estado']     ?? null,
+            'fechaDesde' => $query['fechaDesde'] ?? null,
+            'fechaHasta' => $query['fechaHasta'] ?? null,
+            'clienteId'  => $query['clienteId']  ?? null,
+        ]);
         $pedidos = array_map(
             fn(Pedido $p) => $this->serializar($p),
-            $this->servicio->listarPedidos((int)($query['pagina'] ?? 1), (int)($query['tamanio'] ?? 20))
+            $this->servicio->listarPedidos((int)($query['pagina'] ?? 1), (int)($query['tamanio'] ?? 20), $filtros)
         );
         Respuesta::exito($pedidos);
     }

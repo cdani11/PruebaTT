@@ -8,7 +8,7 @@ import { AutenticacionServicio } from '../../../core/servicios/autenticacion.ser
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div class="flex min-h-screen">
-      <aside class="w-60 bg-slate-800 p-4 text-white">
+      <aside class="flex w-60 flex-col bg-slate-800 p-4 text-white">
         <h2 class="mb-6 text-xl font-bold">PruebaTT</h2>
         <nav class="flex flex-col gap-2">
           <a routerLink="/tablero" routerLinkActive="bg-slate-700" class="rounded p-2 hover:bg-slate-700">Tablero</a>

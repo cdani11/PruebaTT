@@ -33,6 +33,34 @@ final class ClienteAppService
             ?? throw new DominioExcepcion('Cliente no encontrado.');
     }
 
+    public function actualizarCliente(string $id, array $datos): Cliente
+    {
+        $cliente = $this->repositorio->obtenerPorId($id)
+            ?? throw new DominioExcepcion('Cliente no encontrado.');
+
+        $nuevoCorreo = strtolower(trim($datos['correoElectronico'] ?? ''));
+        if ($nuevoCorreo !== $cliente->correoElectronico() && $this->repositorio->existeCorreo($nuevoCorreo)) {
+            throw new DominioExcepcion('Ya existe un cliente con ese correo.');
+        }
+
+        $cliente->actualizarDatos(
+            nombres: $datos['nombres'] ?? '',
+            apellidos: $datos['apellidos'] ?? '',
+            correoElectronico: $nuevoCorreo,
+            telefono: ($datos['telefono'] ?? null) ?: null
+        );
+        $this->repositorio->actualizar($cliente);
+        return $cliente;
+    }
+
+    public function eliminarCliente(string $id): void
+    {
+        if ($this->repositorio->obtenerPorId($id) === null) {
+            throw new DominioExcepcion('Cliente no encontrado.');
+        }
+        $this->repositorio->eliminar($id);
+    }
+
     /** @return Cliente[] */
     public function listarClientes(int $pagina = 1, int $tamanio = 20): array
     {
