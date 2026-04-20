@@ -60,7 +60,7 @@ public class AutenticacionAppServiceTests
     {
         _repo.Setup(r => r.ExisteCorreoAsync(It.IsAny<string>(), default)).ReturnsAsync(false);
         _hash.Setup(h => h.Hashear(It.IsAny<string>())).Returns("hashed");
-        _token.Setup(t => t.Generar(It.IsAny<Usuario>())).Returns("jwt-token");
+        _token.Setup(t => t.Generar(It.IsAny<Usuario>())).Returns(new TokenDto("jwt-token", DateTime.UtcNow.AddHours(1)));
 
         var resultado = await _sut.RegistrarAsync(new RegistroUsuarioDto("user", "b@b.com", "pass123"));
 
@@ -73,7 +73,7 @@ public class AutenticacionAppServiceTests
         var usuario = new Usuario("u", "a@a.com", "hash");
         _repo.Setup(r => r.ObtenerPorCorreoAsync("a@a.com", default)).ReturnsAsync(usuario);
         _hash.Setup(h => h.Verificar("buena", "hash")).Returns(true);
-        _token.Setup(t => t.Generar(usuario)).Returns("jwt-token");
+        _token.Setup(t => t.Generar(usuario)).Returns(new TokenDto("jwt-token", DateTime.UtcNow.AddHours(1)));
 
         var resultado = await _sut.IniciarSesionAsync(new InicioSesionDto("a@a.com", "buena"));
 

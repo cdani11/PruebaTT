@@ -61,25 +61,7 @@ cargando los resultados con `ToListAsync()` antes de `FirstOrDefault()`.
 
 ---
 
-### 4. ¿Qué ventaja tiene Python + pandas para el análisis de datos frente a SQL puro?
-
-**Respuesta orientativa:**
-
-SQL es excelente para agregaciones simples, pero operaciones como la media móvil de
-7 días (`rolling(7).mean()`) o rellenar días sin pedidos con cero (`reindex` + `fill_value`)
-son mucho más expresivas en pandas. La regresión lineal con `numpy.polyfit` habría
-requerido extensiones CLR o procedimientos muy complejos en SQL Server.
-
-Python también facilita la exploración: pude agregar el análisis por período mensual
-con `dt.to_period("M")` en una línea. Con FastAPI expongo estos resultados como un
-microservicio independiente que el frontend consume igual que cualquier REST API.
-
-La separación también tiene sentido arquitectónico: el servicio de estadísticas es de
-solo lectura y puede escalar o actualizarse sin afectar el servicio de transacciones.
-
----
-
-### 5. ¿Cómo garantizas la consistencia entre las dos bases de datos?
+### 4. ¿Cómo garantizas la consistencia entre las dos bases de datos?
 
 **Respuesta orientativa:**
 
@@ -98,7 +80,7 @@ clientes lo consumiría para ejecutar su propia acción.
 
 ---
 
-### 6. ¿Qué cambiarías para llevarlo a producción?
+### 5. ¿Qué cambiarías para llevarlo a producción?
 
 **Respuesta orientativa:**
 
@@ -111,49 +93,6 @@ clientes lo consumiría para ejecutar su propia acción.
 6. **CI/CD**: pipeline que ejecute los tests antes de cada deploy.
 7. **Paginación del cursor**: para tablas grandes, `OFFSET/FETCH` no escala bien; usar
    paginación basada en cursor.
-
----
-
-### 7. ¿Cómo funciona el interceptor HTTP de Angular?
-
-**Respuesta orientativa:**
-
-Angular proporciona `HttpInterceptorFn` (API funcional de Angular 17) que intercepta
-todas las peticiones salientes. En `token.interceptor.ts`:
-
-```typescript
-export const tokenInterceptor: HttpInterceptorFn = (req, next) => {
-  const token = localStorage.getItem('token');
-  if (!token) return next(req);
-
-  const reqConToken = req.clone({
-    setHeaders: { Authorization: `Bearer ${token}` }
-  });
-  return next(reqConToken);
-};
-```
-
-El interceptor `errores.interceptor.ts` observa las respuestas con `catchError`:
-si recibe un 401, limpia el token y redirige al login. Ambos están registrados
-en `app.config.ts` con `provideHttpClient(withInterceptors([...]))`.
-
----
-
-### 8. ¿Por qué Angular Signals en lugar de NgRx?
-
-**Respuesta orientativa:**
-
-Para el tamaño y complejidad de esta aplicación, NgRx habría sido sobreingeniería.
-Signals (introducidos en Angular 16 y estabilizados en 17) ofrecen reactividad
-sin el boilerplate de actions/reducers/selectors.
-
-Cada componente usa `signal<T>()` para estado local (`cargando`, `error`, `pedidos`)
-y actualiza la UI con `signal.set()` o `signal.update()`. La detección de cambios
-solo se ejecuta cuando el signal cambia, lo que es más eficiente que el CD por zona.
-
-Si el proyecto creciera con estado compartido entre muchos componentes
-(carrito de compras, notificaciones globales), migraría a un servicio de estado
-basado en Signals o usaría NgRx Signal Store.
 
 ---
 
@@ -246,6 +185,9 @@ habitual en dashboards de operaciones en tiempo real sin WebSockets.
 
 ## Sección C — Instrucciones para implementar
 
+La regla general es siempre partir desde la base de datos hacia arriba:
+**BD → Dominio → Infraestructura → Aplicación → Presentación → Frontend**.
+
 ### Orden recomendado de trabajo
 
 Para cualquier funcionalidad nueva, seguir siempre este orden:
@@ -317,3 +259,15 @@ curl -X GET http://localhost:8080/api/v1/clientes?pagina=1&tamanio=5 \
 | Servicios Angular | PascalCase + sufijo `Servicio`: `AlertasServicio` |
 | Endpoints | Sustantivos en kebab-case: `/api/v1/pedidos/alertas` |
 | Variables de entorno | MAYUSCULAS_SEPARADAS: `JWT_CLAVE`, `DB_SERVIDOR` |
+
+### Convenciones a respetar en el código
+
+| Aspecto | Convención |
+|---|---|
+| Nombres de entidades y casos de uso | Español (ej. `Cliente`, `PedidoAppService`) |
+| Nombres de infraestructura y config | Inglés o mixto (ej. `ConexionSqlServer`, `docker-compose.yml`) |
+| Métodos de dominio | Verbos en español: `crear()`, `confirmar()`, `cancelar()` |
+| Respuesta HTTP | Siempre `{ exito, datos, errores }` |
+| Stored Procedures | Prefijo `sp_` + acción + entidad: `sp_AgregarCliente` |
+| Componentes Angular | Sufijo `Componente` en PascalCase, selector `app-` en kebab |
+| Servicios Angular | Sufijo `Servicio`, `providedIn: 'root'` |
